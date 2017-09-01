@@ -57,8 +57,7 @@ class Schedule():
 
         # Calculating days count for two months
         self.days_count = calendar.monthrange(self.date.year,
-                                              self.date.month)[1]
-        + calendar.monthrange(self.date.year, self.date.month + 1)[1]
+                                              self.date.month)[1] + calendar.monthrange(self.date.year, self.date.month + 1)[1]
 
         # Add rows with data to list (exclude header)
         employees = []
@@ -131,7 +130,7 @@ class Employee():
 
     def add_shift(self, shift):
         '''Adds shift, checking for validity'''
-        if isinstance(shift, Shift):
+        if isinstance(shift, Shift) and shift.validate():
             self.shifts.append(shift)
         else:
             raise TypeError('Not a Shift instance passed.')
@@ -142,7 +141,7 @@ class Employee():
         i = 0
         while i < self.days:
             if cells[i]:
-                self.add_shift(Shift(time=cells[i], date=self.date))
+                self.add_shift(Shift(time=cells[i], date=self.date, employee=self))
             self.date = self.date + self.day
             i += 1
 
@@ -169,19 +168,34 @@ class Shift():
     shift_time_d = datetime.time(hour=7)
     shift_time_n = datetime.time(hour=19)
 
-    def __init__(self, time, date):
-        # Check type of shift
-        if time in ('D', 'N', 'Ó', 'd', 'n', 'ó'):
-            self.time = time.upper()
-        elif time == '':
-            return
+    def __init__(self, time, date, employee):
+        if isinstance(employee, Employee):
+            self.employee = employee
         else:
-            logging.info('Invalid time format, only \'D\', \'N\' and \'Ó\' is accepted.')
+            raise TypeError('Not a Employee instance passed.')
         # Date instance check
         if isinstance(date, datetime.date):
             self.date = date
         else:
             raise TypeError('Not a date instance passed.')
+        # Check type of shift
+        if time in ('D', 'N', 'Ó', 'd', 'n', 'ó'):
+            self.time = time.upper()
+        elif time in ('ds', 'ds.', 'del', 'del.'):
+            self.time = time
+        elif time == '':
+            self.time = ''
+            logging.info('No time info passed, only empty string for {}'.format(self.employee.name))
+        else:
+            self.time = ''
+            logging.info(
+                'Invalid time format, only \'D\', \'N\' and \'Ó\' is accepted for {}'.format(self.employee))
+
+    def validate(self):
+        if self.time and self.date and self.employee:
+            return True
+        else:
+            return False
 
     def __str__(self):
         return '{} shift, from {} to {}'.format(self.time,
@@ -195,6 +209,8 @@ class Shift():
         elif self.time == 'N':
             start_dt = datetime.datetime.combine(self.date, self.shift_time_n)
         elif self.time == 'Ó':
+            start_dt = datetime.datetime.combine(self.date, self.shift_time_d)
+        else:
             start_dt = datetime.datetime.combine(self.date, self.shift_time_d)
         return start_dt
 
